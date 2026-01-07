@@ -2,8 +2,13 @@ import satori from 'satori'
 import { Resvg } from '@resvg/resvg-js'
 import * as fs from 'fs'
 import * as path from 'path'
+import { fileURLToPath } from 'url'
 import { SocialPreviewTemplate } from './template.js'
 import type { RepoData } from './github.js'
+
+// ESM equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const IMAGE_WIDTH = 1280
 const IMAGE_HEIGHT = 640
