@@ -18,24 +18,25 @@ function getEdgePath(): string {
 }
 
 function getEdgeUserDataDir(): string {
+  // Use a dedicated profile directory to avoid WebView2 conflicts
+  // Extensions need to be installed once in this profile
   if (process.platform === 'win32') {
     return path.join(
       os.homedir(),
       'AppData',
       'Local',
-      'Microsoft',
-      'Edge',
-      'User Data'
+      'GH-SocialPreviewGenerator',
+      'EdgeProfile'
     )
   } else if (process.platform === 'darwin') {
     return path.join(
       os.homedir(),
       'Library',
       'Application Support',
-      'Microsoft Edge'
+      'GH-SocialPreviewGenerator'
     )
   } else {
-    return path.join(os.homedir(), '.config', 'microsoft-edge')
+    return path.join(os.homedir(), '.config', 'gh-social-preview-generator')
   }
 }
 
@@ -47,9 +48,10 @@ export async function uploadSocialPreviewViaBrowser(
   const browser = await puppeteer.launch({
     executablePath: getEdgePath(),
     userDataDir: getEdgeUserDataDir(),
-    headless: false, // Need to be visible for user to see progress
+    headless: false,
     defaultViewport: null,
-    args: ['--no-first-run', '--no-default-browser-check']
+    args: ['--no-first-run', '--no-default-browser-check'],
+    ignoreDefaultArgs: ['--disable-extensions']
   })
 
   try {
@@ -59,40 +61,85 @@ export async function uploadSocialPreviewViaBrowser(
     const settingsUrl = `https://github.com/${owner}/${repo}/settings`
     await page.goto(settingsUrl, { waitUntil: 'networkidle2' })
 
-    // Wait for the page to load and find the social preview section
-    // The "Edit" button is in the Social preview section
-    await page.waitForSelector('details-dialog input[type="file"]', {
-      timeout: 10000
-    })
-
-    // Find and click the Edit button for social preview
-    const editButton = await page.$('button[aria-label="Edit social preview"]')
-    if (editButton) {
-      await editButton.click()
-      await page.waitForSelector('input[type="file"]', {
-        visible: true,
-        timeout: 5000
+    // Check if we're logged in by looking for the settings form
+    const settingsForm = await page.$('form[data-turbo="false"], main h2')
+    if (!settingsForm) {
+      console.log('\n  Please log into GitHub in the browser window...')
+      console.log('  (Waiting up to 2 minutes for login)\n')
+      await page.waitForSelector('form[data-turbo="false"], main h2', {
+        timeout: 120000
       })
     }
 
-    // Upload the file
-    const fileInput = await page.$('input[type="file"]')
+    await delay(1000)
+
+    // Scroll down to find Social preview section
+    await page.evaluate(() => {
+      const labels = document.querySelectorAll('label, h3, summary')
+      for (const label of labels) {
+        if (label.textContent?.includes('Social preview')) {
+          label.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          break
+        }
+      }
+    })
+
+    await delay(1000)
+
+    // Click the Edit button or summary to expand the social preview section
+    const editClicked = await page.evaluate(() => {
+      const summaries = document.querySelectorAll('summary, button')
+      for (const el of summaries) {
+        if (el.textContent?.includes('Edit') && el.closest('[class*="social"]')) {
+          ;(el as HTMLElement).click()
+          return true
+        }
+      }
+      // Try clicking any Edit button near Social preview text
+      const labels = document.querySelectorAll('label, h3')
+      for (const label of labels) {
+        if (label.textContent?.includes('Social preview')) {
+          const parent = label.closest('div')
+          const btn = parent?.querySelector('summary, button')
+          if (btn) {
+            ;(btn as HTMLElement).click()
+            return true
+          }
+        }
+      }
+      return false
+    })
+
+    if (editClicked) {
+      await delay(1000)
+    }
+
+    // Find the file input (might be hidden, use a more general selector)
+    let fileInput = await page.$('input[type="file"]')
+    if (!fileInput) {
+      // Wait a bit more for it to appear
+      await page.waitForSelector('input[type="file"]', { timeout: 5000 })
+      fileInput = await page.$('input[type="file"]')
+    }
+
     if (!fileInput) {
       throw new Error('Could not find file input for social preview upload')
     }
 
     await fileInput.uploadFile(imagePath)
+    await delay(3000)
 
-    // Wait for upload to process
-    await delay(2000)
-
-    // Click the Save/Update button
-    const saveButton = await page.$(
-      'button[type="submit"]:has-text("Save"), button:has-text("Update social preview")'
-    )
-    if (saveButton) {
-      await saveButton.click()
-      await delay(2000)
+    // Look for and click save button
+    const buttons = await page.$$('button[type="submit"], button')
+    for (const button of buttons) {
+      const text = await button.evaluate(
+        el => el.textContent?.toLowerCase() || ''
+      )
+      if (text.includes('save') || text.includes('update')) {
+        await button.click()
+        await delay(2000)
+        break
+      }
     }
 
     await page.close()
@@ -110,7 +157,8 @@ export async function uploadAllViaBrowser(
     userDataDir: getEdgeUserDataDir(),
     headless: false,
     defaultViewport: null,
-    args: ['--no-first-run', '--no-default-browser-check']
+    args: ['--no-first-run', '--no-default-browser-check'],
+    ignoreDefaultArgs: ['--disable-extensions']
   })
 
   let success = 0
@@ -134,57 +182,91 @@ export async function uploadAllViaBrowser(
         // Look for the social preview edit button or file input
         // GitHub's settings page has a "Social preview" section with an Edit button
 
-        // Wait for page to be ready
-        await page.waitForSelector('main', { timeout: 10000 })
+        // Check if we're logged in by looking for the settings form
+        const settingsForm = await page.$('form[data-turbo="false"], main h2')
+        if (!settingsForm) {
+          console.log('\n  Please log into GitHub in the browser window...')
+          console.log('  (Waiting up to 2 minutes for login)\n')
+          await page.waitForSelector('form[data-turbo="false"], main h2', {
+            timeout: 120000
+          })
+        }
 
-        // Scroll to social preview section if needed
+        await delay(1000)
+
+        // Scroll down to find Social preview section
         await page.evaluate(() => {
-          const heading = Array.from(
-            document.querySelectorAll('h2, h3, label')
-          ).find(el => el.textContent?.includes('Social preview'))
-          if (heading) {
-            heading.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          const labels = document.querySelectorAll('label, h3, summary')
+          for (const label of labels) {
+            if (label.textContent?.includes('Social preview')) {
+              label.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              break
+            }
           }
         })
 
-        await delay(500)
+        await delay(1000)
 
-        // Click Edit button if there's a summary/details element
-        const editButton = await page.$(
-          'button[aria-label="Edit repository image"]'
-        )
-        if (editButton) {
-          await editButton.click()
-          await delay(500)
+        // Click the Edit button or summary to expand the social preview section
+        const editClicked = await page.evaluate(() => {
+          const summaries = document.querySelectorAll('summary, button')
+          for (const el of summaries) {
+            if (
+              el.textContent?.includes('Edit') &&
+              el.closest('[class*="social"]')
+            ) {
+              ;(el as HTMLElement).click()
+              return true
+            }
+          }
+          // Try clicking any Edit button near Social preview text
+          const labels = document.querySelectorAll('label, h3')
+          for (const label of labels) {
+            if (label.textContent?.includes('Social preview')) {
+              const parent = label.closest('div')
+              const btn = parent?.querySelector('summary, button')
+              if (btn) {
+                ;(btn as HTMLElement).click()
+                return true
+              }
+            }
+          }
+          return false
+        })
+
+        if (editClicked) {
+          await delay(1000)
         }
 
-        // Find the file input (might be hidden)
-        const fileInput = await page.$('input[type="file"][accept*="image"]')
+        // Find the file input (might be hidden, use a more general selector)
+        let fileInput = await page.$('input[type="file"]')
         if (!fileInput) {
-          throw new Error('Could not find file input')
+          // Wait a bit more for it to appear
+          await page.waitForSelector('input[type="file"]', { timeout: 5000 })
+          fileInput = await page.$('input[type="file"]')
         }
 
-        // Upload the file
-        await fileInput.uploadFile(imagePath)
+        if (!fileInput) {
+          throw new Error('Could not find file input for social preview upload')
+        }
 
-        // Wait for upload to complete
+        await fileInput.uploadFile(imagePath)
         await delay(3000)
 
-        // Look for and click save/submit button
-        const buttons = await page.$$(
-          'button[type="submit"], button[type="button"]'
-        )
+        // Look for and click save button
+        const buttons = await page.$$('button[type="submit"], button')
         for (const button of buttons) {
           const text = await button.evaluate(
             el => el.textContent?.toLowerCase() || ''
           )
           if (text.includes('save') || text.includes('update')) {
             await button.click()
+            await delay(2000)
             break
           }
         }
 
-        await delay(2000)
+        await delay(1000)
         success++
       } catch (error) {
         console.error(
