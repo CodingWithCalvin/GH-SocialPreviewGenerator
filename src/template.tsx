@@ -1,3 +1,4 @@
+import React from 'react'
 import type { RepoData } from './github.js'
 
 // Brand colors
@@ -36,7 +37,7 @@ export function SocialPreviewTemplate({
   repo,
   logoFullBase64,
   calvinBase64
-}: TemplateProps) {
+}: TemplateProps): React.ReactElement {
   const repoUrl = `https://www.github.com/${repo.owner}/${repo.name}`
 
   return (

@@ -82,7 +82,8 @@ export class GitHubClient {
     let page = 1
     const perPage = 100
 
-    while (true) {
+    let hasMore = true
+    while (hasMore) {
       const { data } = await this.octokit.repos.listForOrg({
         org,
         type: 'public',
@@ -90,7 +91,10 @@ export class GitHubClient {
         page
       })
 
-      if (data.length === 0) break
+      if (data.length === 0) {
+        hasMore = false
+        continue
+      }
 
       for (const repo of data) {
         if (!repo.archived) {
@@ -98,8 +102,11 @@ export class GitHubClient {
         }
       }
 
-      if (data.length < perPage) break
-      page++
+      if (data.length < perPage) {
+        hasMore = false
+      } else {
+        page++
+      }
     }
 
     return repos.sort()
