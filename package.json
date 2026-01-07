@@ -1,6 +1,7 @@
 {
   "name": "gh-social-preview-generator",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Generate branded social preview images for CodingWithCalvin repositories",
   "main": "./dist/index.js",
