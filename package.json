@@ -29,6 +29,7 @@
     "@octokit/rest": "^21.0.0",
     "@resvg/resvg-js": "^2.6.0",
     "commander": "^12.1.0",
+    "puppeteer-core": "^24.34.0",
     "satori": "^0.10.0"
   },
   "devDependencies": {

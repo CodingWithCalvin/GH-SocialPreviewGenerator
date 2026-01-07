@@ -2,7 +2,11 @@
 
 import { Command } from 'commander'
 import { GitHubClient } from './github.js'
-import { generateSocialPreview, savePreviewToFile } from './generator.js'
+import { savePreviewToFile } from './generator.js'
+import {
+  uploadSocialPreviewViaBrowser,
+  uploadAllViaBrowser
+} from './browser.js'
 
 const program = new Command()
 
@@ -15,19 +19,20 @@ program
 
 program
   .command('generate')
-  .description('Generate and upload social preview for a single repository')
+  .description('Generate social preview for a single repository')
   .argument('<owner>', 'Repository owner (org or user)')
   .argument('<repo>', 'Repository name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env var)')
-  .option('-d, --dry-run', 'Generate image locally without uploading', false)
   .option(
-    '-o, --output <path>',
-    'Output path for dry-run (default: <repo>.png)'
+    '-u, --upload',
+    'Upload via browser (uses your logged-in Edge session)',
+    false
   )
+  .option('-o, --output <path>', 'Output path for image (default: <repo>.png)')
   .action(async (owner: string, repo: string, options) => {
     const token = options.token || process.env.GITHUB_TOKEN
 
-    if (!token && !options.dryRun) {
+    if (!token) {
       console.error(
         'Error: GitHub token required. Use --token or set GITHUB_TOKEN env var.'
       )
@@ -37,20 +42,23 @@ program
     try {
       console.log(`Generating social preview for ${owner}/${repo}...`)
 
-      const client = new GitHubClient(token || '')
+      const client = new GitHubClient(token)
       const repoData = await client.fetchRepoData(owner, repo)
 
       console.log(`  Name: ${repoData.name}`)
       console.log(`  Stars: ${repoData.stargazersCount}`)
       console.log(`  Description: ${repoData.description || '(none)'}`)
 
-      if (options.dryRun) {
-        const outputPath = options.output || `${repo}.png`
-        await savePreviewToFile(repoData, outputPath)
-        console.log(`  Saved to: ${outputPath}`)
-      } else {
-        const imageBuffer = await generateSocialPreview(repoData)
-        await client.uploadSocialPreview(owner, repo, imageBuffer)
+      const outputPath = options.output || `${repo}.png`
+      await savePreviewToFile(repoData, outputPath)
+      console.log(`  Saved to: ${outputPath}`)
+
+      if (options.upload) {
+        console.log('  Uploading via browser...')
+        const absolutePath = await import('path').then(p =>
+          p.resolve(outputPath)
+        )
+        await uploadSocialPreviewViaBrowser(owner, repo, absolutePath)
         console.log('  Uploaded successfully!')
       }
     } catch (error) {
@@ -61,15 +69,17 @@ program
 
 program
   .command('generate-all')
-  .description(
-    'Generate and upload social previews for all repositories in an org'
-  )
+  .description('Generate social previews for all repositories in an org')
   .argument('<owner>', 'Organization or user name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env var)')
-  .option('-d, --dry-run', 'Generate images locally without uploading', false)
+  .option(
+    '-u, --upload',
+    'Upload via browser (uses your logged-in Edge session)',
+    false
+  )
   .option(
     '-o, --output-dir <dir>',
-    'Output directory for dry-run (default: ./previews)'
+    'Output directory for images (default: ./previews)'
   )
   .action(async (owner: string, options) => {
     const token = options.token || process.env.GITHUB_TOKEN
@@ -83,30 +93,39 @@ program
 
     try {
       const client = new GitHubClient(token)
+      const { mkdir } = await import('fs/promises')
+      const path = await import('path')
 
       console.log(`Fetching repositories for ${owner}...`)
       const repos = await client.listOrgRepos(owner)
       console.log(`Found ${repos.length} repositories\n`)
 
+      const outputDir = options.outputDir || './previews'
+      await mkdir(outputDir, { recursive: true })
+
+      const reposToUpload: {
+        owner: string
+        repo: string
+        imagePath: string
+      }[] = []
       let successCount = 0
       let errorCount = 0
 
+      // Generate all images first
       for (const repo of repos) {
         try {
-          console.log(`Processing ${owner}/${repo}...`)
+          console.log(`Generating ${owner}/${repo}...`)
           const repoData = await client.fetchRepoData(owner, repo)
+          const outputPath = `${outputDir}/${repo}.png`
+          await savePreviewToFile(repoData, outputPath)
+          console.log(`  Saved to: ${outputPath}`)
 
-          if (options.dryRun) {
-            const outputDir = options.outputDir || './previews'
-            const { mkdir } = await import('fs/promises')
-            await mkdir(outputDir, { recursive: true })
-            const outputPath = `${outputDir}/${repo}.png`
-            await savePreviewToFile(repoData, outputPath)
-            console.log(`  Saved to: ${outputPath}`)
-          } else {
-            const imageBuffer = await generateSocialPreview(repoData)
-            await client.uploadSocialPreview(owner, repo, imageBuffer)
-            console.log('  Uploaded!')
+          if (options.upload) {
+            reposToUpload.push({
+              owner,
+              repo,
+              imagePath: path.resolve(outputPath)
+            })
           }
           successCount++
         } catch (error) {
@@ -118,8 +137,29 @@ program
       }
 
       console.log(
-        `\nCompleted: ${successCount} successful, ${errorCount} failed`
+        `\nGenerated: ${successCount} successful, ${errorCount} failed`
       )
+
+      // Upload via browser if requested
+      if (options.upload && reposToUpload.length > 0) {
+        console.log(`\nUploading ${reposToUpload.length} images via browser...`)
+        console.log('(Edge will open - please do not close it)\n')
+
+        const result = await uploadAllViaBrowser(
+          reposToUpload,
+          (current, total, repo) => {
+            console.log(`Uploading ${current}/${total}: ${repo}...`)
+          }
+        )
+
+        console.log(
+          `\nUploaded: ${result.success} successful, ${result.failed} failed`
+        )
+
+        if (result.failed > 0) {
+          process.exit(1)
+        }
+      }
 
       if (errorCount > 0) {
         process.exit(1)
