@@ -36,3 +36,5 @@ __tests__/runner/*
 # Generated images (for local testing)
 *.generated.png
 test-preview.png
+
+previews/
