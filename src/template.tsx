@@ -27,12 +27,6 @@ function formatNumber(count: number): string {
   return count.toString()
 }
 
-function truncateDescription(desc: string | null, maxLength = 120): string {
-  if (!desc) return 'A CodingWithCalvin project'
-  if (desc.length <= maxLength) return desc
-  return desc.substring(0, maxLength - 3) + '...'
-}
-
 export function SocialPreviewTemplate({
   repo,
   logoFullBase64,
@@ -237,15 +231,17 @@ export function SocialPreviewTemplate({
             />
 
             {/* Description */}
-            <span
+            <div
               style={{
                 color: COLORS.gray,
                 fontSize: '26px',
-                lineHeight: 1.5,
-                marginTop: '16px'
+                lineHeight: 1.4,
+                marginTop: '16px',
+                flex: 1,
+                overflow: 'hidden'
               }}>
-              {truncateDescription(repo.description, 200)}
-            </span>
+              {repo.description || 'A CodingWithCalvin project'}
+            </div>
           </div>
         </div>
 
