@@ -1,0 +1,38 @@
+# Dependency directory
+node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage
+*.lcov
+.nyc_output
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Build output
+dist
+
+# Environment
+.env
+.env.test
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode
+*.code-workspace
+
+# Test output
+__tests__/runner/*
+
+# Generated images (for local testing)
+*.generated.png
+test-preview.png
