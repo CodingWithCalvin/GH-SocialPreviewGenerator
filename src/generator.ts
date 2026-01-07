@@ -60,7 +60,9 @@ function loadAssets(): { logo: string; logoFull: string; calvin: string } {
   const assetsDir = getAssetsDir()
   cachedLogo = loadImageAsBase64(path.join(assetsDir, 'logo.png'))
   cachedLogoFull = loadImageAsBase64(path.join(assetsDir, 'logo-full.png'))
-  cachedCalvin = loadImageAsBase64(path.join(assetsDir, 'infographic-calvin.png'))
+  cachedCalvin = loadImageAsBase64(
+    path.join(assetsDir, 'infographic-calvin.png')
+  )
 
   return { logo: cachedLogo, logoFull: cachedLogoFull, calvin: cachedCalvin }
 }

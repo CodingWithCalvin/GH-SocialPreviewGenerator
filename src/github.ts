@@ -112,16 +112,13 @@ export class GitHubClient {
   ): Promise<void> {
     // The social preview upload endpoint requires a multipart form upload
     // Using the undocumented but stable endpoint
-    await this.octokit.request(
-      'PUT /repos/{owner}/{repo}/social-preview',
-      {
-        owner,
-        repo,
-        headers: {
-          'content-type': 'image/png'
-        },
-        data: imageBuffer
-      }
-    )
+    await this.octokit.request('PUT /repos/{owner}/{repo}/social-preview', {
+      owner,
+      repo,
+      headers: {
+        'content-type': 'image/png'
+      },
+      data: imageBuffer
+    })
   }
 }

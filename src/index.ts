@@ -8,7 +8,9 @@ const program = new Command()
 
 program
   .name('social-preview')
-  .description('Generate branded social preview images for CodingWithCalvin repositories')
+  .description(
+    'Generate branded social preview images for CodingWithCalvin repositories'
+  )
   .version('1.0.0')
 
 program
@@ -18,12 +20,17 @@ program
   .argument('<repo>', 'Repository name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env var)')
   .option('-d, --dry-run', 'Generate image locally without uploading', false)
-  .option('-o, --output <path>', 'Output path for dry-run (default: <repo>.png)')
+  .option(
+    '-o, --output <path>',
+    'Output path for dry-run (default: <repo>.png)'
+  )
   .action(async (owner: string, repo: string, options) => {
     const token = options.token || process.env.GITHUB_TOKEN
 
     if (!token && !options.dryRun) {
-      console.error('Error: GitHub token required. Use --token or set GITHUB_TOKEN env var.')
+      console.error(
+        'Error: GitHub token required. Use --token or set GITHUB_TOKEN env var.'
+      )
       process.exit(1)
     }
 
@@ -54,16 +61,23 @@ program
 
 program
   .command('generate-all')
-  .description('Generate and upload social previews for all repositories in an org')
+  .description(
+    'Generate and upload social previews for all repositories in an org'
+  )
   .argument('<owner>', 'Organization or user name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env var)')
   .option('-d, --dry-run', 'Generate images locally without uploading', false)
-  .option('-o, --output-dir <dir>', 'Output directory for dry-run (default: ./previews)')
+  .option(
+    '-o, --output-dir <dir>',
+    'Output directory for dry-run (default: ./previews)'
+  )
   .action(async (owner: string, options) => {
     const token = options.token || process.env.GITHUB_TOKEN
 
     if (!token) {
-      console.error('Error: GitHub token required. Use --token or set GITHUB_TOKEN env var.')
+      console.error(
+        'Error: GitHub token required. Use --token or set GITHUB_TOKEN env var.'
+      )
       process.exit(1)
     }
 
@@ -96,12 +110,16 @@ program
           }
           successCount++
         } catch (error) {
-          console.error(`  Error: ${error instanceof Error ? error.message : error}`)
+          console.error(
+            `  Error: ${error instanceof Error ? error.message : error}`
+          )
           errorCount++
         }
       }
 
-      console.log(`\nCompleted: ${successCount} successful, ${errorCount} failed`)
+      console.log(
+        `\nCompleted: ${successCount} successful, ${errorCount} failed`
+      )
 
       if (errorCount > 0) {
         process.exit(1)

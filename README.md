@@ -1,8 +1,10 @@
 # 🖼️ GH-SocialPreviewGenerator
 
-> ✨ Automagically generate stunning social preview images for all your GitHub repositories!
+> ✨ Automagically generate stunning social preview images for all your GitHub
+> repositories!
 
-Give every repo in your organization a polished, branded first impression. No more boring auto-generated previews!
+Give every repo in your organization a polished, branded first impression. No
+more boring auto-generated previews!
 
 ## 🎨 What It Does
 
@@ -59,8 +61,8 @@ node dist/index.js generate-all <owner> --dry-run --output-dir ./previews
 
 ### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
+| Variable       | Description                                  |
+| -------------- | -------------------------------------------- |
 | `GITHUB_TOKEN` | GitHub token (alternative to `--token` flag) |
 
 ### Token Permissions 🔐
@@ -82,7 +84,8 @@ npm run all
 
 ## 🤖 Automated Updates
 
-A weekly workflow runs every **Sunday at midnight UTC** to refresh all social previews across the organization - keeping your stats up to date!
+A weekly workflow runs every **Sunday at midnight UTC** to refresh all social
+previews across the organization - keeping your stats up to date!
 
 ## 📄 License
 
