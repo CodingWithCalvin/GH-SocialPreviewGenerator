@@ -90,7 +90,10 @@ export async function uploadSocialPreviewViaBrowser(
     const editClicked = await page.evaluate(() => {
       const summaries = document.querySelectorAll('summary, button')
       for (const el of summaries) {
-        if (el.textContent?.includes('Edit') && el.closest('[class*="social"]')) {
+        if (
+          el.textContent?.includes('Edit') &&
+          el.closest('[class*="social"]')
+        ) {
           ;(el as HTMLElement).click()
           return true
         }
@@ -132,13 +135,17 @@ export async function uploadSocialPreviewViaBrowser(
     // Look for and click save button
     const buttons = await page.$$('button[type="submit"], button')
     for (const button of buttons) {
-      const text = await button.evaluate(
-        el => el.textContent?.toLowerCase() || ''
-      )
-      if (text.includes('save') || text.includes('update')) {
-        await button.click()
-        await delay(2000)
-        break
+      try {
+        const text = await button.evaluate(
+          el => el.textContent?.toLowerCase() || ''
+        )
+        if (text.includes('save') || text.includes('update')) {
+          await button.click()
+          await delay(2000)
+          break
+        }
+      } catch {
+        // Skip buttons that aren't clickable
       }
     }
 
@@ -256,13 +263,17 @@ export async function uploadAllViaBrowser(
         // Look for and click save button
         const buttons = await page.$$('button[type="submit"], button')
         for (const button of buttons) {
-          const text = await button.evaluate(
-            el => el.textContent?.toLowerCase() || ''
-          )
-          if (text.includes('save') || text.includes('update')) {
-            await button.click()
-            await delay(2000)
-            break
+          try {
+            const text = await button.evaluate(
+              el => el.textContent?.toLowerCase() || ''
+            )
+            if (text.includes('save') || text.includes('update')) {
+              await button.click()
+              await delay(2000)
+              break
+            }
+          } catch {
+            // Skip buttons that aren't clickable
           }
         }
 
