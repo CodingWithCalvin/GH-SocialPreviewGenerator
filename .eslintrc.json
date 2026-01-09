@@ -29,6 +29,7 @@
     "plugin:jest/recommended"
   ],
   "rules": {
+    "no-extra-semi": "off",
     "camelcase": "off",
     "no-console": "off",
     "no-unused-vars": "off",

@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "start": "powershell -Command \"node dist/index.js generate-all CodingWithCalvin --upload --token $(gh auth token)\"",
     "format:write": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "lint": "npx eslint src --ext .ts,.tsx",
